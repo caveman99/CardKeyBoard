@@ -1,13 +1,20 @@
 #include <RingBuf.h>
 RingBuf<unsigned char, 32> txBuf;
 
+#include <EEPROM.h>
+
 #include <Adafruit_NeoPixel.h>
+// TODO: Does this need to be changed for ATMega8?
 #define PIN 13
 #define NUMPIXELS 1
+byte brightness = 40, Bus1, Bus2;
 Adafruit_NeoPixel pixels =
     Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 #include <Wire.h>
+
+#define SLAVE_I2C_ADDRESS_DEFAULT 0x5F
+#define KEYPAD_VERSION 0x12
 
 #define Set_Bit(val, bitn) (val |= (1 << (bitn)))
 #define Clr_Bit(val, bitn) (val &= ~(1 << (bitn)))
@@ -83,15 +90,60 @@ int Mode = 0; // 0->normal.1->shift 2->long_shift, 3->sym, 4->long_shift
               // 5->fn,6->long_fn
 void flashOn() {
   pixels.setPixelColor(0, pixels.Color(3, 3, 3));
+  pixels.setBrightness(brightness);
   pixels.show();
 }
+
 void flashOff() {
   pixels.setPixelColor(0, pixels.Color(0, 0, 0));
+  pixels.setBrightness(brightness);
   pixels.show();
 }
+
 void requestEvent() {
   while (txBuf.pop(OUT))
     Wire.write(OUT);
+}
+
+void receiveEvent(int numBytes) {
+  int command = Wire.read();
+  switch (command) {
+  case 0x02:
+    Wire.write(Bus1);
+    break;
+  case 0x03:
+    if (numBytes == 1) {
+      Bus1 = Wire.read();
+      EEPROM.update(0, Bus1);
+    }
+    break;
+  case 0x04:
+    Wire.write(KEYPAD_VERSION);
+    break;
+  case 0x11:
+    pixels.clear();
+    break;
+
+  case 0x12:
+    brightness = Wire.read();
+    break;
+
+  case 0x13:
+    if (numBytes == 4) {
+      int r = Wire.read();
+      int g = Wire.read();
+      int b = Wire.read();
+      pixels.setPixelColor(0, pixels.Color(r, g, b));
+      pixels.setBrightness(brightness);
+      pixels.show();
+    }
+    break;
+
+  default: // 0x01, -1 or any other command sent
+    while (txBuf.pop(OUT))
+      Wire.write(OUT);
+    break;
+  }
 }
 
 void setup() {
@@ -108,22 +160,36 @@ void setup() {
   DDRD = 0x00;
   PORTD = 0xff;
 
+  EEPROM.get(1, Bus1);
+  EEPROM.get(1, Bus2);
+  if (Bus2 != SLAVE_I2C_ADDRESS_DEFAULT) {
+    Bus1 = SLAVE_I2C_ADDRESS_DEFAULT;
+    Bus2 = SLAVE_I2C_ADDRESS_DEFAULT;
+    EEPROM.update(0, Bus1);
+    EEPROM.update(1, Bus2);
+  }
+
   pixels.begin();
   for (int j = 0; j < 3; j++) {
     for (int i = 0; i < 30; i++) {
       pixels.setPixelColor(0, pixels.Color(i, i, i));
+      pixels.setBrightness(brightness);
       pixels.show();
       delay(6);
     }
     for (int i = 30; i > 0; i--) {
       pixels.setPixelColor(0, pixels.Color(i, i, i));
+      pixels.setBrightness(brightness);
       pixels.show();
       delay(6);
     }
   }
   pixels.setPixelColor(0, pixels.Color(0, 0, 0));
-  Wire.begin(0x5f);
+  pixels.setBrightness(brightness);
+  pixels.show();
+  Wire.begin(Bus1);
   Wire.onRequest(requestEvent);
+  Wire.onReceive(receiveEvent);
 }
 
 unsigned char GetInput() {
@@ -744,6 +810,7 @@ void loop() {
     break;
   }
 
+  pixels.setBrightness(brightness);
   pixels.show(); // This sends the updated pixel color to the hardware.
   if (!hadPressed) {
     // feed the ringbuffer instead of the single key
