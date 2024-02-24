@@ -86,8 +86,8 @@ unsigned char KeyMap[48][7] = {
 int _shift = 0, _fn = 0, _sym = 0, idle = 0;
 unsigned char KEY = 0, OUT = 0;
 bool hadPressed = false;
-int Mode = 0; // 0->normal.1->shift 2->long_shift, 3->sym, 4->long_shift
-              // 5->fn,6->long_fn
+int Mode = 0; // 0->normal, 1->shift, 2->long_shift, 3->sym, 4->long_shift,
+              // 5->fn, 6->long_fn
 void flashOn() {
   pixels.setPixelColor(0, pixels.Color(3, 3, 3));
   pixels.setBrightness(brightness);
