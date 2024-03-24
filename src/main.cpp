@@ -3,13 +3,28 @@ RingBuf<unsigned char, 32> txBuf;
 
 #include <EEPROM.h>
 
+byte brightness = 40, Bus1, Bus2;
+
+#ifndef AVR_LEONARDO
 #include <Adafruit_NeoPixel.h>
 // TODO: Does this need to be changed for ATMega8?
 #define PIN 13
 #define NUMPIXELS 1
-byte brightness = 40, Bus1, Bus2;
+
 Adafruit_NeoPixel pixels =
     Adafruit_NeoPixel(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+#else
+class Pixels {
+public:
+  void begin() {}
+  int Color(int, int, int) { return 0; }
+  void setPixelColor(int, int) {}
+  void setBrightness(int) {}
+  void show() {}
+  void clear() {}
+};
+Pixels pixels;
+#endif
 
 #include <Wire.h>
 
@@ -20,11 +35,13 @@ Adafruit_NeoPixel pixels =
 #define Clr_Bit(val, bitn) (val &= ~(1 << (bitn)))
 #define Get_Bit(val, bitn) (val & (1 << (bitn)))
 
-//       d0   d1     d2  d3 d4 d5 d6 d7 d8 d9 d10 d11
-// A3：   esc   1      2  3  4  5  6  7  8  9  0   del
-// A2:    tab   q      w  e  r  t  y  u  i  o  p
-// A1:   left   up     a  s  d  f  g  h  j  k  l   enter
-// A0:   down   right  z  x  c  v  b  n  m  ,  .   space
+#ifndef AVR_LEONARDO
+
+//       d0    d1 d2 d3 d4 d5 d6 d7 d8 d9 d10 d11
+// A3： esc     1  2  3  4  5  6  7  8  9  0  del
+// A2:  tab     q  w  e  r  t  y  u  i  o  p
+// A1: left    up  a  s  d  f  g  h  j  k  l  enter
+// A0: down right  z  x  c  v  b  n  m  ,  .  space
 // sym: d15
 // shift: d12
 // fn: d14
@@ -80,6 +97,30 @@ unsigned char KeyMap[48][7] = {
     {'.', '.', '.', '>', '>', 174, 174},   //.
     {' ', ' ', ' ', ' ', ' ', 175, 175}    // space
 };
+
+#else
+
+// Mapping for Leonardo/Beetle with a 3x3 layout
+
+//       d9   d10   d11
+// A2:  esc   tab   del
+// A1: left    up enter
+// A0: down right space
+
+unsigned char KeyMap[9][1] = {
+    {27},  // esc
+    {9},   // tab
+    {8},   // del
+    {180}, // LEFT
+    {181}, // UP
+    {13},  // enter
+    {182}, // DOWN
+    {183}, // RIGHT
+    {' '}  // space
+};
+
+#endif
+
 #define shiftPressed (PINB & 0x10) != 0x10
 #define symPressed (PINB & 0x80) != 0x80
 #define fnPressed (PINB & 0x40) != 0x40
@@ -147,18 +188,25 @@ void receiveEvent(int numBytes) {
 }
 
 void setup() {
+#ifndef AVR_LEONARDO
   pinMode(A3, OUTPUT);
+#endif
   pinMode(A2, OUTPUT);
   pinMode(A1, OUTPUT);
   pinMode(A0, OUTPUT);
   digitalWrite(A0, HIGH);
   digitalWrite(A1, LOW);
   digitalWrite(A2, LOW);
+#ifndef AVR_LEONARDO
   digitalWrite(A3, LOW);
   DDRB = 0x00;
   PORTB = 0xff;
   DDRD = 0x00;
   PORTD = 0xff;
+#else
+  DDRB &= 31;
+  PORTB |= 224;
+#endif
 
   EEPROM.get(1, Bus1);
   EEPROM.get(1, Bus2);
@@ -192,6 +240,7 @@ void setup() {
   Wire.onReceive(receiveEvent);
 }
 
+#ifndef AVR_LEONARDO
 unsigned char GetInput() {
   digitalWrite(A3, LOW);
   digitalWrite(A2, HIGH);
@@ -202,7 +251,6 @@ unsigned char GetInput() {
   case 254:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -211,7 +259,6 @@ unsigned char GetInput() {
   case 253:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -220,7 +267,6 @@ unsigned char GetInput() {
   case 251:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -229,7 +275,6 @@ unsigned char GetInput() {
   case 247:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -238,7 +283,6 @@ unsigned char GetInput() {
   case 239:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -256,7 +300,6 @@ unsigned char GetInput() {
   case 191:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -265,7 +308,6 @@ unsigned char GetInput() {
   case 127:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -276,7 +318,6 @@ unsigned char GetInput() {
   case 222:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -285,7 +326,6 @@ unsigned char GetInput() {
   case 221:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -294,7 +334,6 @@ unsigned char GetInput() {
   case 219:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -303,7 +342,6 @@ unsigned char GetInput() {
   case 215:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -329,7 +367,6 @@ unsigned char GetInput() {
   case 253:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -338,7 +375,6 @@ unsigned char GetInput() {
   case 251:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -356,7 +392,6 @@ unsigned char GetInput() {
   case 239:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -365,7 +400,6 @@ unsigned char GetInput() {
   case 223:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -374,7 +408,6 @@ unsigned char GetInput() {
   case 191:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -394,7 +427,6 @@ unsigned char GetInput() {
   case 222:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -403,7 +435,6 @@ unsigned char GetInput() {
   case 221:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -412,7 +443,6 @@ unsigned char GetInput() {
   case 219:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -421,7 +451,6 @@ unsigned char GetInput() {
   case 215:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -438,7 +467,6 @@ unsigned char GetInput() {
   case 254:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -447,7 +475,6 @@ unsigned char GetInput() {
   case 253:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -456,7 +483,6 @@ unsigned char GetInput() {
   case 251:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -465,7 +491,6 @@ unsigned char GetInput() {
   case 247:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -483,7 +508,6 @@ unsigned char GetInput() {
   case 223:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -521,7 +545,6 @@ unsigned char GetInput() {
   case 221:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -530,7 +553,6 @@ unsigned char GetInput() {
   case 219:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -539,7 +561,6 @@ unsigned char GetInput() {
   case 215:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -556,7 +577,6 @@ unsigned char GetInput() {
   case 254:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -565,7 +585,6 @@ unsigned char GetInput() {
   case 253:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -574,7 +593,6 @@ unsigned char GetInput() {
   case 251:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -583,7 +601,6 @@ unsigned char GetInput() {
   case 247:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -592,7 +609,6 @@ unsigned char GetInput() {
   case 239:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -601,7 +617,6 @@ unsigned char GetInput() {
   case 223:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -610,7 +625,6 @@ unsigned char GetInput() {
   case 191:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -619,7 +633,6 @@ unsigned char GetInput() {
   case 127:
     while (PIND != 0xff) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -630,7 +643,6 @@ unsigned char GetInput() {
   case 222:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -639,7 +651,6 @@ unsigned char GetInput() {
   case 221:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -648,7 +659,6 @@ unsigned char GetInput() {
   case 219:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -657,7 +667,6 @@ unsigned char GetInput() {
   case 215:
     while (PINB != 223) {
       flashOn();
-      // delay(1);
     }
     flashOff();
     hadPressed = true;
@@ -667,6 +676,105 @@ unsigned char GetInput() {
   hadPressed = false;
   return 255;
 }
+#else
+unsigned char GetInput() {
+  digitalWrite(A2, LOW);
+  digitalWrite(A1, HIGH);
+  digitalWrite(A0, HIGH);
+  delay(2);
+  uint8_t latch = PINB & 224;
+  switch (latch) {
+  case 192:
+    while (latch != 224) {
+      flashOn();
+    }
+    flashOff();
+    hadPressed = true;
+    return 1;
+    break;
+  case 160:
+    while (latch != 224) {
+      flashOn();
+    }
+    flashOff();
+    hadPressed = true;
+    return 2;
+    break;
+  case 96:
+    while (latch != 224) {
+      flashOn();
+    }
+    flashOff();
+    hadPressed = true;
+    return 3;
+    break;
+  }
+  digitalWrite(A2, HIGH);
+  digitalWrite(A1, LOW);
+  digitalWrite(A0, HIGH);
+  delay(2);
+  latch = PINB & 224;
+  switch (latch) {
+  case 192:
+    while (latch != 224) {
+      flashOn();
+    }
+    flashOff();
+    hadPressed = true;
+    return 4;
+    break;
+  case 160:
+    while (latch != 224) {
+      flashOn();
+    }
+    flashOff();
+    hadPressed = true;
+    return 5;
+    break;
+  case 96:
+    while (latch != 224) {
+      flashOn();
+    }
+    flashOff();
+    hadPressed = true;
+    return 6;
+    break;
+  }
+  digitalWrite(A2, HIGH);
+  digitalWrite(A1, HIGH);
+  digitalWrite(A0, LOW);
+  delay(2);
+  latch = PINB & 224;
+  switch (latch) {
+  case 192:
+    while (latch != 224) {
+      flashOn();
+    }
+    flashOff();
+    hadPressed = true;
+    return 7;
+    break;
+  case 160:
+    while (latch != 224) {
+      flashOn();
+    }
+    flashOff();
+    hadPressed = true;
+    return 8;
+    break;
+  case 96:
+    while (latch != 224) {
+      flashOn();
+    }
+    flashOff();
+    hadPressed = true;
+    return 9;
+    break;
+  }
+  hadPressed = false;
+  return 255;
+}
+#endif
 
 void loop() {
   if (shiftPressed) {
